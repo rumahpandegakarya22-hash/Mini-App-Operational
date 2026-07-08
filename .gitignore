@@ -1,0 +1,13 @@
+# Node / Next.js (miniapp-kost)
+**/node_modules/
+**/.next/
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# Env (kredensial nyata — JANGAN pernah commit)
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+Thumbs.db
