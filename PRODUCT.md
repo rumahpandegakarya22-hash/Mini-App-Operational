@@ -14,7 +14,7 @@ Aplikasi input operasional harian yang mengunci format data di titik masuk (drop
 
 ## Brand Personality
 
-Tenang, presisi, premium-tapi-ramah. Terasa seperti aplikasi sistem iOS modern (iOS 26 / Liquid Glass): material kaca pada chrome navigasi, permukaan konten solid dan sangat terbaca, gerakan halus yang mengonfirmasi aksi. Identitas warna: hijau brand kost (deep green) yang sudah dipakai di manifest & dashboard — dipertahankan, bukan diganti.
+Tenang, presisi, premium-tapi-ramah. Terasa seperti aplikasi sistem iOS modern (iOS 26 / Liquid Glass): material kaca pada chrome navigasi, permukaan konten solid dan sangat terbaca, gerakan halus yang mengonfirmasi aksi. Identitas warna: rose lembut `#F2D5CF` sebagai warna utama (diminta owner, 12 Jul 2026 — menggantikan hijau lama) — dipakai sebagai tint permukaan & aksen, dengan turunan rosewood gelap di hue yang sama untuk tombol/teks agar kontras tetap AA.
 
 ## Anti-references
 

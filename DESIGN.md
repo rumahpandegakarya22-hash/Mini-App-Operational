@@ -1,6 +1,6 @@
 # DESIGN.md — Mini App Kost Tiga Dara
 
-Sistem visual "iOS 26 / Liquid Glass" di atas identitas hijau brand kost. Kaca hanya untuk chrome navigasi; konten selalu solid dan kontras tinggi. Semua token hidup di `miniapp-kost/src/app/globals.css`.
+Sistem visual "iOS 26 / Liquid Glass" di atas identitas rose brand kost `#F2D5CF` (OKLCH hue ≈ 32). `#F2D5CF` sendiri hidup sebagai tint (`--brand-tint-2`); aksi & teks memakai turunan rosewood gelap di hue yang sama agar kontras tetap AA. Kaca hanya untuk chrome navigasi; konten selalu solid dan kontras tinggi. Semua token hidup di `miniapp-kost/src/app/globals.css`.
 
 ## Theme
 
@@ -10,21 +10,22 @@ Dua tema: light (default) dan dark, via `prefers-color-scheme` + `[data-theme]` 
 
 | Token | Nilai | Peran |
 |---|---|---|
-| `--bg` | `oklch(0.965 0.006 165)` | Latar body (grouped background, tint hijau sangat tipis) |
+| `--bg` | `oklch(0.965 0.008 32)` | Latar body (grouped background, tint rose sangat tipis) |
 | `--surface` | `oklch(1 0 0)` | Kartu / grouped inset |
-| `--surface-2` | `oklch(0.945 0.008 165)` | Fill sekunder (input, segmen) |
-| `--ink` | `oklch(0.22 0.015 170)` | Teks utama |
-| `--ink-2` | `oklch(0.45 0.02 168)` | Teks sekunder (≥ 4.5:1 di atas surface) |
-| `--brand` | `oklch(0.47 0.09 164)` | Aksi utama, seleksi, ikon aktif (≈ #0f6b4f) |
-| `--brand-strong` | `oklch(0.40 0.09 164)` | Pressed / hover gelap |
-| `--brand-tint` | `oklch(0.94 0.025 164)` | Fill lembut ikon/badge |
-| `--danger` | `oklch(0.50 0.19 27)` | Error |
-| `--border` | `oklch(0.89 0.01 165)` | Hairline |
-| `--glass` | `rgba(252,253,252,0.72)` + `blur(24px) saturate(1.8)` | Material chrome |
+| `--surface-2` | `oklch(0.945 0.01 32)` | Fill sekunder (input, segmen) |
+| `--ink` | `oklch(0.22 0.012 32)` | Teks utama |
+| `--ink-2` | `oklch(0.45 0.015 32)` | Teks sekunder (≥ 4.5:1 di atas surface) |
+| `--brand` | `oklch(0.47 0.09 32)` | Aksi utama, seleksi, ikon aktif (≈ #86463a, turunan gelap #F2D5CF) |
+| `--brand-strong` | `oklch(0.40 0.09 32)` | Pressed / hover gelap |
+| `--brand-tint` | `oklch(0.94 0.02 32)` | Fill lembut ikon/badge |
+| `--brand-tint-2` | `oklch(0.896 0.033 32)` | = `#F2D5CF` persis — seleksi teks, border hover |
+| `--danger` | `oklch(0.48 0.18 27)` | Error |
+| `--border` | `oklch(0.89 0.01 32)` | Hairline |
+| `--glass` | `rgba(252,250,249,0.7)` + `blur(22px) saturate(1.8)` | Material chrome |
 
 ### Dark
 
-`--bg oklch(0.15 0.01 170)`, `--surface oklch(0.21 0.012 170)`, `--surface-2 oklch(0.26 0.012 170)`, `--ink oklch(0.95 0.005 170)`, `--ink-2 oklch(0.73 0.015 168)`, `--brand oklch(0.72 0.11 163)` (teks/ikon) & tombol fill `oklch(0.56 0.10 164)`, `--border oklch(0.30 0.01 170)`, glass `rgba(20,24,22,0.62)`.
+`--bg oklch(0.15 0.008 32)`, `--surface oklch(0.21 0.01 32)`, `--surface-2 oklch(0.265 0.012 32)`, `--ink oklch(0.95 0.004 32)`, `--ink-2 oklch(0.73 0.012 32)`, `--brand oklch(0.78 0.07 32)` (teks/ikon) & tombol fill `oklch(0.52 0.09 32)`, `--border oklch(0.31 0.012 32)`, glass `rgba(23,20,19,0.62)`.
 
 ## Typography
 
