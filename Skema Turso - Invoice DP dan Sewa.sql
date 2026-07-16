@@ -256,6 +256,8 @@ CREATE INDEX idx_payment_invoice_sewa ON payment(invoice_sewa_id);
 --   kebetulan share no_inv yang sama (kasus invoice_sewa no_kamar 31, 3 baris
 --   dengan no_inv 'INV/31/TDU/7/2026' yang legit beda periode/grand_total).
 --   Kalau kejadian nyata, perlu recreate table buat drop UNIQUE constraint ini.
+--   >>> SUPERSEDED — kejadian beneran (bag. 8), tabel payment sudah di-rebuild
+--   total di §10 (kolom no_invoice/billing_period sudah gak ada lagi).
 
 -- Query contoh utk 3 kebutuhan dashboard (jatuh tempo / tunggakan / pembayaran terakhir):
 --
@@ -281,7 +283,39 @@ CREATE INDEX idx_payment_invoice_sewa ON payment(invoice_sewa_id);
 
 
 -- ============================================================================
--- 8. FIX terkait: src/lib/modules/handlers/checkout-lookup.ts (2026-07-16)
+-- 8. BACKFILL payment dari data invoice_dp/invoice_sewa historis (2026-07-16)
+--    Dieksekusi setelah fitur submit payment (bag. 7-8) jalan — submit BARU
+--    otomatis nulis payment, tapi 60 baris historis (import spreadsheet, lihat
+--    bag. 3-4) belum punya pasangan payment. Dieksekusi row-by-row via Node
+--    (BUKAN INSERT...SELECT satu statement) krn payment.no_invoice masih
+--    UNIQUE dan invoice_sewa boleh berbagi no_inv sama (kasus kamar 31).
+--
+--    Aturan (dikonfirmasi user):
+--    - invoice_sewa: HANYA baris yg ada tanggal_pembayaran & grand_total > 0
+--      -> Paid. 14 baris tanpa tanggal & grand_total NULL/0 DILEWATI (gak ada
+--      nominal buat dicatat).
+--    - invoice_dp: SEMUA baris grand_total > 0 -> Paid (26 dari 29 baris gak
+--      punya tanggal_pembayaran di sheet asli, tapi user KONFIRMASI DP-nya
+--      memang sudah lunas dari awal, cuma kolom tanggal di spreadsheet lama
+--      gak pernah diisi rapi -> payment_date NULL, status tetap 'Paid').
+--    - 2 baris "Anindya Farah" (DP & Sewa) DILEWATI total, id_penghuni NULL.
+--    - Konflik UNIQUE(no_invoice): 3 baris invoice_sewa kamar 31 semua
+--      no_inv='INV/31/TDU/7/2026' (legit, beda periode/nominal) -> baris
+--      ke-2/3 di-suffix jadi 'INV/31/TDU/7/2026 (#30)'/' (#31)' (angka =
+--      invoice_sewa.id) supaya tetap tercatat tanpa melanggar constraint.
+--
+--    Hasil: 28 baris dari invoice_dp + 17 baris dari invoice_sewa = 45 baris
+--    payment baru, semua status='Paid', total Rp47.075.000, 0 FK violation.
+--    id_payment format 'PAY-BACKFILL-DP-<id>' / 'PAY-BACKFILL-SEWA-<id>' —
+--    sengaja beda dari format submit asli ('PAY-YYYYMMDD-xxxxxxxx') biar
+--    kelihatan jelas ini hasil backfill, bukan transaksi asli via app.
+--    >>> SUPERSEDED — id_payment format ini diganti total di §10 (skema
+--    payment.id_payment sekarang = no_inv invoice-nya langsung).
+-- ============================================================================
+
+
+-- ============================================================================
+-- 9. FIX terkait: src/lib/modules/handlers/checkout-lookup.ts (2026-07-16)
 --    Handler ini query `payment WHERE id_penghuni = ?` pakai Tenant.id dari
 --    Google Sheet "Database Penghuni" (format 'KTD-x') — BUKAN id_penghuni
 --    Turso occupancy_history (format 'KTD-YYMM-NNN') yang jadi target FK
@@ -292,3 +326,79 @@ CREATE INDEX idx_payment_invoice_sewa ON payment(invoice_sewa_id);
 --    punya riwayat check-out+check-in) — hasil resolve selalu penghuni AKTIF,
 --    bukan yang sudah checkout.
 -- ============================================================================
+
+
+-- ============================================================================
+-- 10. REBUILD payment — SKEMA FINAL yang berlaku sekarang (2026-07-16)
+--     Permintaan user: (1) id_payment JANGAN generate kode baru, pakai no_inv
+--     invoice-nya langsung (jadi 1 kolom berfungsi sbg id_payment DAN no
+--     invoice — kolom no_invoice terpisah DIHAPUS, redundan). (2) billing_period
+--     (TEXT bebas) diganti 2 kolom periode_awal/periode_akhir; DP cuma py
+--     periode_awal (tanggal bayar itu sendiri), periode_akhir NULL.
+--     invoice_dp_id/invoice_sewa_id TETAP DIPERTAHANKAN (bukan dihapus) —
+--     tanpa itu, gak ada cara pasti nentuin baris invoice_sewa mana yg
+--     dimaksud saat no_inv-nya duplikat (kasus kamar 31, lihat catatan #30/#31
+--     di bawah); teks no_inv/id_payment SENDIRIAN gak cukup jadi FK yg aman.
+--
+--     Krn ganti struktur PK & pecah kolom, tabel di-rebuild total (bukan ALTER):
+--     CREATE payment_new -> INSERT ... SELECT dari payment lama (periode_awal/
+--     akhir di-derive dari invoice_sewa/invoice_dp via invoice_dp_id/
+--     invoice_sewa_id yg SUDAH ADA, bukan parsing ulang teks billing_period
+--     lama) -> DROP payment lama -> RENAME payment_new -> payment -> recreate
+--     index. Nilai 45 baris yg sudah ada TIDAK hilang, cuma dipindah bentuk.
+--
+--     CATATAN: utk baris DP hasil backfill yg tanggal_pembayaran-nya memang
+--     tidak diketahui (25 dari 28 baris, lihat §8), periode_awal JUGA
+--     dibiarkan NULL (bukan dipaksa isi tanggal asal) — konsisten sama
+--     payment_date yg sudah NULL, jujur soal data yg beneran gak diketahui.
+--
+--     CHECK ((invoice_dp_id IS NOT NULL) + (invoice_sewa_id IS NOT NULL) = 1)
+--     BISA ditambah sekarang (gak bisa lewat ALTER TABLE dulu, lihat §7) —
+--     karena rebuild total, bonus: sekarang beneran ditegakkan di level DB.
+-- ============================================================================
+
+DROP TABLE IF EXISTS payment_new;
+
+CREATE TABLE payment_new (
+  id_payment       TEXT PRIMARY KEY,   -- = no_inv invoice_dp/invoice_sewa (dgn suffix ' (#<id>)' kalau no_inv-nya duplikat)
+  id_penghuni      TEXT NOT NULL REFERENCES occupancy_history(id_penghuni),
+  invoice_dp_id    INTEGER REFERENCES invoice_dp(id),
+  invoice_sewa_id  INTEGER REFERENCES invoice_sewa(id),
+  periode_awal     TEXT,               -- Sewa: invoice_sewa.periode_awal | DP: tanggal bayar (NULL kalau gak diketahui)
+  periode_akhir    TEXT,               -- Sewa: invoice_sewa.periode_akhir | DP: SELALU NULL (cuma 1 tanggal)
+  amount           REAL NOT NULL,
+  payment_date     TEXT,
+  payment_method   TEXT CHECK(payment_method IN ('Transfer', 'Qris', 'Cash')),
+  status           TEXT NOT NULL CHECK(status IN ('Pending', 'Paid', 'Partial', 'Overdue', 'Cancelled', 'Refund')),
+  notes            TEXT,
+  created_at       TEXT DEFAULT (CURRENT_TIMESTAMP),
+  CHECK ((invoice_dp_id IS NOT NULL) + (invoice_sewa_id IS NOT NULL) = 1)
+);
+
+INSERT INTO payment_new (id_payment, id_penghuni, invoice_dp_id, invoice_sewa_id, periode_awal, periode_akhir, amount, payment_date, payment_method, status, notes, created_at)
+SELECT
+  p.no_invoice,
+  p.id_penghuni,
+  p.invoice_dp_id,
+  p.invoice_sewa_id,
+  COALESCE(s.periode_awal, d.tanggal_pembayaran),
+  s.periode_akhir,
+  p.amount,
+  p.payment_date,
+  p.payment_method,
+  p.status,
+  p.notes,
+  p.created_at
+FROM payment p
+LEFT JOIN invoice_dp d ON d.id = p.invoice_dp_id
+LEFT JOIN invoice_sewa s ON s.id = p.invoice_sewa_id;
+
+DROP TABLE payment;
+ALTER TABLE payment_new RENAME TO payment;
+CREATE INDEX idx_payment_penghuni     ON payment(id_penghuni);
+CREATE INDEX idx_payment_invoice_dp   ON payment(invoice_dp_id);
+CREATE INDEX idx_payment_invoice_sewa ON payment(invoice_sewa_id);
+
+-- Verifikasi: SELECT COUNT(*) FROM payment;                 -- 45 (data lama tetap utuh)
+--            PRAGMA foreign_key_check(payment);              -- 0 baris
+--            SELECT id_payment FROM payment WHERE id_payment LIKE 'INV/31/TDU/7/2026%';  -- 3 baris, id_payment beda2
